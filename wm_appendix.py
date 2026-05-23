@@ -142,10 +142,12 @@ story.append(tbl([
     ["Dec 8-9 *","FOMC","USA","SEP + Dot Plot","Fed.gov T1"],
 ],[3.5*cm,4*cm,2*cm,8*cm,4*cm],hdr=["Data","Evento","Area","Impatto atteso","Fonte"]))
 
-for out in [PDF_PATH,PDF_OUT]:
-    doc=SimpleDocTemplate(out,pagesize=landscape(A4),leftMargin=1.5*cm,rightMargin=1.5*cm,topMargin=2.0*cm,bottomMargin=1.5*cm)
-    doc.build(story,onFirstPage=hdr_ftr,onLaterPages=hdr_ftr)
-    print(f"OK WM PDF: {out}")
+import shutil as _shutil
+doc=SimpleDocTemplate(PDF_PATH,pagesize=landscape(A4),leftMargin=1.5*cm,rightMargin=1.5*cm,topMargin=2.0*cm,bottomMargin=1.5*cm)
+doc.build(story,onFirstPage=hdr_ftr,onLaterPages=hdr_ftr)
+print(f"OK WM PDF: {PDF_PATH}")
+_shutil.copy2(PDF_PATH,PDF_OUT)
+print(f"OK WM PDF: {PDF_OUT}")
 
 # XLSX
 brd=Border(left=Side(style="thin",color="CCCCCC"),right=Side(style="thin",color="CCCCCC"),top=Side(style="thin",color="CCCCCC"),bottom=Side(style="thin",color="CCCCCC"))
@@ -240,5 +242,6 @@ for i,row in enumerate(risk3,3):
             elif "OK" in str(val): cell.font=Font(size=9,color=GREEN_H,bold=True)
 aw(ws3)
 
-for out in [XLSX_PATH,XLSX_OUT]: wb.save(out); print(f"OK XLSX: {out}")
+wb.save(XLSX_PATH); print(f"OK XLSX: {XLSX_PATH}")
+_shutil.copy2(XLSX_PATH,XLSX_OUT); print(f"OK XLSX: {XLSX_OUT}")
 print(f"\nWM Appendix + XLSX {DATE_REPORT} completati.")

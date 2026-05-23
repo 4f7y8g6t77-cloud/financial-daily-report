@@ -197,10 +197,12 @@ if errors:
     for err in errors:
         story.append(Paragraph(f"WARNING: {err}", SS))
 
-for out in [f"/home/claude/financial_daily_report_{DATE_STR}.pdf",
-            f"/mnt/user-data/outputs/financial_daily_report_{DATE_STR}.pdf"]:
-    os.makedirs(os.path.dirname(out) if "/" in out else ".", exist_ok=True)
-    doc = SimpleDocTemplate(out, pagesize=A4,
-        leftMargin=1.5*cm, rightMargin=1.5*cm, topMargin=2.0*cm, bottomMargin=1.8*cm)
-    doc.build(story, onFirstPage=hdr_footer, onLaterPages=hdr_footer)
-    print(f"OK PDF: {out}")
+import shutil
+_pdf = f"/home/claude/financial_daily_report_{DATE_STR}.pdf"
+_out = f"/mnt/user-data/outputs/financial_daily_report_{DATE_STR}.pdf"
+doc = SimpleDocTemplate(_pdf, pagesize=A4,
+    leftMargin=1.5*cm, rightMargin=1.5*cm, topMargin=2.0*cm, bottomMargin=1.8*cm)
+doc.build(story, onFirstPage=hdr_footer, onLaterPages=hdr_footer)
+print(f"OK PDF: {_pdf}")
+shutil.copy2(_pdf, _out)
+print(f"OK PDF: {_out}")
