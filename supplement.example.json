@@ -1,0 +1,93 @@
+{
+  "_doc": "Supplemento dati per merge_supplement.py. Ogni valore: value + source + tier + as_of (sessione ISO). Dati raccolti via Bigdata.com il 15/11/2026 per la chiusura del 13/11/2026. Campi non verificabili lasciati fuori (restano N/D).",
+  "data": {
+    "indices": {
+      "FTSE_MIB": {"value": 51858.51, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "FTSE_MIB_DELTA": {"value": 0.10, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "DAX": {"value": 26818.70, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "DAX_DELTA": {"value": 0.44, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "CAC40": {"value": 8368.91, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "CAC40_DELTA": {"value": 0.09, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "EUROSTOXX50": {"value": 6409.50, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "EUROSTOXX50_DELTA": {"value": 0.37, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "SP500": {"value": 7561.67, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "NASDAQ": {"value": 25136.27, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "DJI": {"value": 52347.55, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"}
+    },
+    "bonds": {
+      "BUND_10Y": {"value": 3.377, "source": "Bigdata.com (Wallstreetcn; Yahoo Finance JP)", "tier": "T2", "as_of": "2026-11-13", "note": "chiusura europea, 2 fonti concordi"},
+      "BUND_10Y_DELTA": {"value": 3.0, "source": "Bigdata.com (Wallstreetcn; Yahoo Finance JP)", "tier": "T2", "as_of": "2026-11-13"},
+      "UST_2Y": {"value": 4.88, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "UST_2Y_DELTA": {"value": 1, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "UST_5Y": {"value": 4.98, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "UST_5Y_DELTA": {"value": 3, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "UST_10Y": {"value": 5.15, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "UST_10Y_DELTA": {"value": 5, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "UST_30Y": {"value": 5.47, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "UST_30Y_DELTA": {"value": 4, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"}
+    },
+    "commodities": {
+      "BRENT": {"value": 95.84, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "BRENT_DELTA": {"value": 0.02, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "WTI": {"value": 88.56, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "WTI_DELTA": {"value": -0.20, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "NAT_GAS": {"value": 3.23, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "NAT_GAS_DELTA": {"value": -3.29, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "GOLD": {"value": 3886.30, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "GOLD_DELTA": {"value": 0.03, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "SILVER": {"value": 49.12, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "SILVER_DELTA": {"value": -1.89, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"}
+    },
+    "volatility": {
+      "VIX": {"value": 19.30, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"},
+      "VIX_DELTA": {"value": 3.21, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-13"}
+    },
+    "crypto": {
+      "BTC_USD": {"value": 64680.16, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-15"},
+      "BTC_USD_DELTA": {"value": 0.87, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-15"},
+      "ETH_USD": {"value": 1808.00, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-15"},
+      "ETH_USD_DELTA": {"value": 2.22, "source": "Bigdata.com (FMP)", "tier": "T2", "as_of": "2026-11-15"}
+    },
+    "macro": {
+      "CPI_USA": {"value": "3.7% (set)", "source": "Bigdata.com (FXStreet) - dato BLS", "tier": "T2", "as_of": "2026-10-14", "note": "ottobre: solo m/m +0.4%; YoY ott non pubblicato nel feed"},
+      "CPI_CORE": {"value": "2.6% (set)", "source": "Bigdata.com (FXStreet) - dato BLS", "tier": "T2", "as_of": "2026-10-14"},
+      "PPI_USA": {"value": "6.5% (ott)", "source": "Bigdata.com (FXStreet) - dato BLS", "tier": "T2", "as_of": "2026-11-13"},
+      "HICP_EZ": {"value": "4.0% (ott, flash)", "source": "Bigdata.com (FXStreet) - dato Eurostat", "tier": "T2", "as_of": "2026-11-04"},
+      "CPI_ITA": {"value": "5.4% NIC (ott, prel.)", "source": "Bigdata.com (FXStreet) - dato ISTAT", "tier": "T2", "as_of": "2026-10-30"},
+      "PIL_USA": {"value": "+3.4% ann. (Q3, prel.)", "source": "Bigdata.com (FXStreet) - dato BEA", "tier": "T2", "as_of": "2026-10-29"},
+      "PIL_EZ": {"value": "+0.4% t/t, +1.3% a/a (Q3, prel.)", "source": "Bigdata.com (FXStreet) - dato Eurostat", "tier": "T2", "as_of": "2026-11-13"}
+    }
+  },
+  "context": {
+    "geo_driver": "Guerra USA-Iran (da fine febbraio 2026): blocco USA all'Iran e rischio navigazione nello Stretto di Hormuz; negoziati in stallo.",
+    "geo_notes": [
+      "FATTO (CNBC 10/11; MT Newswires 13/11): Brent sotto $90 il 10/11 per la prima volta da agosto, su attese di de-escalation; settimana precedente -16%.",
+      "FATTO (Truth Social, riportato da CNBC/FXStreet e MT Newswires 13/11): Trump 12/11 'We don't need a deal with Iran'.",
+      "CLAIM (Marina IRGC, via Tekedia/PVM 12/11): due superpetroliere danneggiate da mine su rotta non autorizzata a Hormuz.",
+      "CLAIM (Houthi, via FXStreet 13/11): attacchi a stazione di pompaggio della pipeline East-West saudita e a Yanbu.",
+      "FATTO (Agencia Estado 13/11): S&P conferma Italia BBB+, outlook positivo."
+    ],
+    "scenarios": [
+      {"name": "A - De-escalation Hormuz", "short": "A: De-esc.", "prob": 40, "target": "Brent < $83.4", "equity": "FTSE MIB +3-5%", "condition": "Accordo USA-Iran o navigazione normalizzata; Brent -13% in 30gg", "risk": "Basso"},
+      {"name": "B - Stallo / status quo", "short": "B: Stallo", "prob": 45, "target": "Brent $91-$101", "equity": "Laterale +-2%", "condition": "Blocco e attacchi sporadici; Brent range +-5%", "risk": "Medio"},
+      {"name": "C - Escalation (nuovo shock)", "short": "C: Esc.", "prob": 15, "target": "Brent > $140", "equity": "FTSE MIB -8-10%", "condition": "Attacco su larga scala a infrastrutture Saudi/UAE", "risk": "Alto"},
+      {"name": "Black Swan", "prob": null, "target": "N/D", "equity": "N/D", "condition": "Coda non quantificata, esclusa dalla somma", "risk": "—"}
+    ],
+    "scenarios_note": "Probabilita' A/B ereditate dalla v3.0; C portato da 10% a 15% per chiudere a 100%. Target ricalcolati su Brent $95.84. Da ricalibrare.",
+    "central_banks": [
+      {"bank": "Fed", "label": "Fed (Warsh)", "bias": "Hold, toni hawkish", "next": "9/12/2026 - decisione + SEP/dot plot"},
+      {"bank": "BCE", "label": "BCE (DFR)", "bias": "Hold; forward EUR-STR 2.74% a dic", "next": "17/12/2026 - decisione"}
+    ],
+    "agenda": [
+      {"date": "16/11", "event": "Discorso Fed Chair Warsh", "area": "USA", "note": "Impatto alto", "source": "Bigdata.com (FXStreet)"},
+      {"date": "17/11", "event": "CPI Italia ott (finale)", "area": "IT", "note": "Consensus NIC 5.4% a/a", "source": "Bigdata.com (FXStreet)"},
+      {"date": "17/11", "event": "Vendite al dettaglio USA ott", "area": "USA", "note": "Consensus 0.0% m/m", "source": "Bigdata.com (FXStreet)"},
+      {"date": "18/11", "event": "HICP Eurozona ott (finale)", "area": "EU", "note": "Consensus 4.0% a/a, core 2.5%", "source": "Bigdata.com (FXStreet)"},
+      {"date": "18/11", "event": "Verbali FOMC", "area": "USA", "note": "Impatto alto", "source": "Bigdata.com (FXStreet)"},
+      {"date": "18-20/11", "event": "Discorsi Lagarde (x3)", "area": "EU", "note": "Impatto alto", "source": "Bigdata.com (FXStreet)"},
+      {"date": "09/12", "event": "FOMC - decisione + SEP/dot plot", "area": "USA", "note": "Tasso attuale 4.00% (limite sup.)", "source": "Bigdata.com (FXStreet)"},
+      {"date": "17/12", "event": "BCE - decisione tassi", "area": "EU", "note": "DFR attuale 2.50%", "source": "Bigdata.com (FXStreet)"},
+      {"date": "27/01/27", "event": "FOMC - decisione", "area": "USA", "note": "", "source": "Bigdata.com (FXStreet)"}
+    ]
+  }
+}
