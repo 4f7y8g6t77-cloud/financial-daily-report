@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 wm_appendix.py - WM Appendix PDF Landscape + XLSX v3.0
 Input:  /home/claude/market_data.json
@@ -59,10 +59,12 @@ def hdr_ftr(canvas,doc):
 def sec(t,n):
     return [HRFlowable(width="100%",thickness=1.5,color=GOLD,spaceAfter=4),Paragraph(f"<b>{n} - {t}</b>",ST),Spacer(1,4)]
 
+from xml.sax.saxutils import escape as _esc
+
 def tbl(rows,widths,hdr=None):
     tr=[]
-    if hdr: tr.append([Paragraph(str(c),SW) for c in hdr])
-    for row in rows: tr.append([Paragraph(str(c),SB) if isinstance(c,str) else c for c in row])
+    if hdr: tr.append([Paragraph(_esc(str(c)),SW) for c in hdr])
+    for row in rows: tr.append([Paragraph(_esc(c),SB) if isinstance(c,str) else c for c in row])
     sty=[("BACKGROUND",(0,0),(-1,0),NAVY) if hdr else ("BACKGROUND",(0,0),(-1,-1),WHITE),
          ("ROWBACKGROUNDS",(0,1 if hdr else 0),(-1,-1),[WHITE,LGREY]),
          ("GRID",(0,0),(-1,-1),0.3,HexColor("#CCCCCC")),
@@ -80,7 +82,7 @@ story.append(tbl([
     ["EUR/JPY",v(forex,"EUR_JPY"),"N/D","FX","ECB XML","T1"],
     ["BTP 10Y",v(bonds,"BTP_10Y","{}%"),"N/D","Bond IT","MilanoFinanza","T2"],
     ["Bund 10Y",v(bonds,"BUND_10Y","{}%"),"N/D","Bond DE","web_search","T2"],
-    ["Spread",v(bonds,"SPREAD_BTP_BUND","{}bp"),"N/D","Spread","calcolato","â€”"],
+    ["Spread",v(bonds,"SPREAD_BTP_BUND","{}bp"),"N/D","Spread","calcolato","—"],
     ["UST 10Y",v(bonds,"UST_10Y","{}%"),"N/D","Bond US","web_search","T2"],
     ["Brent",v(comm,"BRENT"),v(comm,"BRENT_DELTA"),"Commodity","CNBC","T2"],
     ["Gold",v(comm,"GOLD"),v(comm,"GOLD_DELTA"),"Commodity","CNBC","T2"],
@@ -97,7 +99,7 @@ story.append(tbl([
     ["Fixed Income US","Neutrale","->","UST 30Y >5%: opportunita selettiva","Deficit USA"],
     ["Commodities Oil","Neutrale","->","Hormuz: scenario B dominante","Geopolitica"],
     ["Gold","Sovrappeso","->","Safe haven + de-dollarizzazione strutturale","Liquidita"],
-    ["Cash","Neutrale","->","EUR-STR ~2.9%: parcheggio remunerato","â€”"],
+    ["Cash","Neutrale","->","EUR-STR ~2.9%: parcheggio remunerato","—"],
 ],[4*cm,3*cm,1.5*cm,8.5*cm,4.5*cm],hdr=["Asset Class","Posizione","Dir.","Rationale","Rischio"]))
 story.append(Spacer(1,10))
 
@@ -108,9 +110,9 @@ try:
 except: ta="N/D"; tb="N/D"; tc=">$140"
 story.append(tbl([
     ["A - De-escalation","40%",ta,"FTSE MIB +3-5%","Negoziato Iran-USA","Basso"],
-    ["B - Stallo","45%",tb,"Laterale +-2%","Hormuz pedaggi","Medio"],
+    ["B - Stallo","50%",tb,"Laterale +-2%","Hormuz pedaggi","Medio"],
     ["C - Escalation","10%",tc,"FTSE MIB -8-10%","Attacco Saudi/UAE","Alto"],
-    ["Black Swan","N/A","N/D","N/D","Escluso per costruzione","â€”"],
+    ["Black Swan","N/A","N/D","N/D","Escluso per costruzione","—"],
 ],[4*cm,2*cm,3*cm,3.5*cm,6.5*cm,2.5*cm],hdr=["Scenario","Prob.","Brent","Equity","Trigger","Rischio"]))
 story.append(Paragraph("Stima qualitativa esperta - non modello quantitativo formale.",SS))
 story.append(Spacer(1,10))
@@ -181,7 +183,7 @@ mdr=[
     ["EUR/GBP","FX",v(forex,"EUR_GBP"),"N/D","ECB XML","T1","Alta"],
     ["BTP 10Y","Bond IT",v(bonds,"BTP_10Y"),"N/D","MilanoFinanza","T2","Alta"],
     ["Bund 10Y","Bond DE",v(bonds,"BUND_10Y"),"N/D","web_search","T2","Alta"],
-    ["Spread","Spread",v(bonds,"SPREAD_BTP_BUND"),"N/D","calcolato","â€”","Alta"],
+    ["Spread","Spread",v(bonds,"SPREAD_BTP_BUND"),"N/D","calcolato","—","Alta"],
     ["UST 2Y","Bond US",v(bonds,"UST_2Y"),"N/D","web_search","T2","Alta"],
     ["UST 10Y","Bond US",v(bonds,"UST_10Y"),"N/D","web_search","T2","Alta"],
     ["UST 30Y","Bond US",v(bonds,"UST_30Y"),"N/D","web_search","T2","Alta"],
@@ -208,7 +210,7 @@ recs=[["Equity EU","Neutrale","->","Spread stabile; FTSE MIB resistenza 50k","Ge
       ["Fixed Income US","Neutrale","->","UST 30Y >5%: opportunita selettiva","Deficit"],
       ["Commodities Oil","Neutrale","->","Hormuz: scenario B dominante","Geopolitica"],
       ["Gold","Sovrappeso","->","Safe haven + de-dollarizzazione","Liquidita"],
-      ["Cash","Neutrale","->","EUR-STR ~2.9%","â€”"]]
+      ["Cash","Neutrale","->","EUR-STR ~2.9%","—"]]
 for i,row in enumerate(recs,3):
     for j,val in enumerate(row,1):
         cell=ws2.cell(row=i,column=j,value=val); ds(cell,i%2==0)

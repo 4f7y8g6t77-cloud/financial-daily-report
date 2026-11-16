@@ -1,17 +1,19 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 report_full_pipeline.py - PDF Report Finanziario v3.0
 Input:  /home/claude/market_data.json
 Output: /home/claude/financial_daily_report_{DATE_STR}.pdf
         /mnt/user-data/outputs/financial_daily_report_{DATE_STR}.pdf
 """
-import json, os
+import json, os, re
+from xml.sax.saxutils import escape
 from reportlab.lib.colors import HexColor
+from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.platypus import (HRFlowable, Paragraph, SimpleDocTemplate,
-                                 Spacer, Table, TableStyle)
+from reportlab.platypus import (HRFlowable, KeepTogether, Paragraph,
+                                 SimpleDocTemplate, Spacer, Table, TableStyle)
 
 WHITE     = HexColor("#FFFFFF"); NAVY   = HexColor("#0B2545")
 GOLD      = HexColor("#C9A84C"); AMBER  = HexColor("#E07B00")
@@ -40,14 +42,78 @@ ST = ps("t", fontName="Helvetica-Bold", fontSize=11,  textColor=NAVY,  leading=1
 SG = ps("g", fontName="Helvetica-Bold", fontSize=8.5, textColor=GREEN, leading=12)
 SR = ps("r", fontName="Helvetica-Bold", fontSize=8.5, textColor=RED,   leading=12)
 SA = ps("a", fontName="Helvetica-Bold", fontSize=8.5, textColor=AMBER, leading=12)
+SBR = ps("br", parent=SB, alignment=TA_RIGHT)
+SWR = ps("wr", parent=SW, alignment=TA_RIGHT)
 
-def v(d, k, fmt=None):
+# ---------------------------------------------------------------------------
+# Formato numeri: stile italiano (migliaia "." / decimali ",") per tutto il PDF.
+# kind: idx (indici), px (prezzi commodity), fx, yield, pct, delta, bp.
+# Un input ambiguo (es. "$4.050": 4,05 o 4.050?) NON viene indovinato:
+# resta invariato e finisce nelle NOTE QUALITA' DATI.
+# ---------------------------------------------------------------------------
+QUALITY = []
+_TOK = re.compile(r"\d[\d.,]*\d|\d")
+_DOT_DECIMAL = {"fx", "yield", "pct", "delta", "bp"}
+_DEFAULT_DEC = {"idx": 2, "px": 2, "fx": 4, "yield": 2, "pct": 1, "delta": 2, "bp": 0}
+
+def _it(n, dec):
+    """Formatta un float in stile italiano: 6950.32 -> '6.950,32'."""
+    out = f"{abs(n):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return ("-" if round(n, dec) < 0 else "") + out
+
+def _parse_tok(tok, kind):
+    """Token numerico -> (valore, decimali), oppure None se ambiguo."""
+    if "." in tok and "," in tok:
+        dsep = "." if tok.rfind(".") > tok.rfind(",") else ","
+        tsep = "," if dsep == "." else "."
+        if tok.count(dsep) != 1: return None
+        ip, fr = tok.split(dsep)
+        return float(ip.replace(tsep, "") + "." + fr), len(fr)
+    sep = "." if "." in tok else ("," if "," in tok else None)
+    if sep is None: return float(tok), 0
+    thousands = re.fullmatch(r"\d{1,3}(?:\%s\d{3})+" % sep, tok) is not None
+    if tok.count(sep) > 1:                       # 1.234.567: migliaia certe
+        return (float(tok.replace(sep, "")), 0) if thousands else None
+    ip, fr = tok.split(sep)
+    if thousands and kind not in _DOT_DECIMAL:
+        if kind == "idx": return float(ip + fr), 0  # indici: 3 cifre = migliaia
+        return None                              # px: "4.050" ambiguo
+    return float(ip + "." + fr), len(fr)
+
+def fmt(raw, kind, unit=""):
+    """Valore grezzo (str o numero) -> stringa formattata, 'N/D' se mancante."""
+    if raw is None or raw == "N/D" or raw == "": return "N/D"
+    if isinstance(raw, (int, float)):
+        r = repr(raw)   # conserva la precisione della fonte (es. ECB 0.83559)
+        if isinstance(raw, int): dec = _DEFAULT_DEC[kind] if kind in ("yield", "fx") else 0
+        else: dec = len(r.split(".")[1]) if "." in r and "e" not in r else _DEFAULT_DEC[kind]
+        out = _it(float(raw), dec)
+        if kind == "delta" and raw > 0: out = "+" + out
+        return out + unit
+    s = str(raw).strip()
+    toks = list(_TOK.finditer(s))
+    if not toks: return s
+    parsed = [_parse_tok(m.group(), kind) for m in toks]
+    if any(p is None for p in parsed):
+        QUALITY.append(f"Formato numerico ambiguo '{s}' ({kind}): lasciato invariato, verificare.")
+        return s
+    for m, (val, dec) in reversed(list(zip(toks, parsed))):
+        s = s[:m.start()] + _it(val, dec) + s[m.end():]
+    if kind == "delta" and s[0].isdigit() and parsed[0][0] != 0: s = "+" + s
+    if unit and not s.endswith(unit.strip()): s += unit
+    return s
+
+def num_val(raw, kind):
+    """Valore numerico (float) da un campo grezzo, None se mancante/ambiguo."""
+    if isinstance(raw, (int, float)): return float(raw)
+    m = _TOK.search(str(raw or ""))
+    p = _parse_tok(m.group(), kind) if m else None
+    return p[0] if p else None
+
+def v(d, k, kind=None, unit=""):
     val = d.get(k)
     if val is None or val == "N/D": return "N/D"
-    if fmt:
-        try: return fmt.format(float(val))
-        except: return str(val)
-    return str(val)
+    return fmt(val, kind, unit) if kind else str(val)
 
 def hdr_footer(canvas, doc):
     w, h = A4
@@ -65,14 +131,19 @@ def hdr_footer(canvas, doc):
     canvas.restoreState()
 
 def sec(title, num):
-    return [HRFlowable(width="100%", thickness=1.5, color=GOLD, spaceAfter=4),
+    hr = HRFlowable(width="100%", thickness=1.5, color=GOLD, spaceAfter=4)
+    hr._sec_start = True   # marcatore: inizio sezione, usato da keep_sections()
+    return [hr,
             Paragraph(f"<b>{num} - {title}</b>", ST), Spacer(1, 4)]
 
-def tbl(rows, widths, hdr=None):
+def tbl(rows, widths, hdr=None, num_cols=()):
+    """num_cols: indici delle colonne numeriche, allineate a destra."""
     tbl_rows = []
-    if hdr: tbl_rows.append([Paragraph(str(c), SW) for c in hdr])
+    if hdr: tbl_rows.append([Paragraph(escape(str(c)), SWR if j in num_cols else SW)
+                             for j, c in enumerate(hdr)])
     for row in rows:
-        tbl_rows.append([Paragraph(str(c), SB) if isinstance(c,str) else c for c in row])
+        tbl_rows.append([Paragraph(escape(c), SBR if j in num_cols else SB)
+                         if isinstance(c, str) else c for j, c in enumerate(row)])
     sty = [("BACKGROUND",(0,0),(-1,0),NAVY) if hdr else ("BACKGROUND",(0,0),(-1,-1),WHITE),
            ("ROWBACKGROUNDS",(0,1 if hdr else 0),(-1,-1),[WHITE,LGREY]),
            ("GRID",(0,0),(-1,-1),0.3,HexColor("#CCCCCC")),
@@ -81,81 +152,92 @@ def tbl(rows, widths, hdr=None):
            ("WORDWRAP",(0,0),(-1,-1),"LTR")]
     return Table(tbl_rows, colWidths=widths, style=TableStyle(sty), repeatRows=1 if hdr else 0)
 
+def keep_sections(flows):
+    """Raggruppa ogni sezione (titolo + tabella + note) in un KeepTogether:
+    niente titoli orfani a fondo pagina."""
+    out, cur = [], []
+    for fl in flows:
+        if getattr(fl, "_sec_start", False) and cur:
+            out.append(KeepTogether(cur)); cur = []
+        cur.append(fl)
+    if cur: out.append(KeepTogether(cur))
+    return out
+
 story = []
 
 story += sec("PIAZZA AFFARI", "01")
 story.append(tbl([
-    ["FTSE MIB",v(idx,"FTSE_MIB"),v(idx,"FTSE_MIB_DELTA"),"MilanoFinanza","T2"],
-    ["DAX",v(idx,"DAX"),v(idx,"DAX_DELTA"),"MilanoFinanza","T2"],
-    ["CAC 40",v(idx,"CAC40"),v(idx,"CAC40_DELTA"),"MilanoFinanza","T2"],
-    ["EuroStoxx50",v(idx,"EUROSTOXX50"),v(idx,"EUROSTOXX50_DELTA"),"MilanoFinanza","T2"],
-    ["S&P 500",v(idx,"SP500"),v(idx,"SP500_DELTA"),"CNBC","T2"],
-    ["Nasdaq",v(idx,"NASDAQ"),v(idx,"NASDAQ_DELTA"),"CNBC","T2"],
-    ["Dow Jones",v(idx,"DJI"),v(idx,"DJI_DELTA"),"CNBC","T2"],
-], [5*cm,3*cm,3*cm,4.5*cm,1.5*cm], hdr=["Indice","Chiusura","Delta%","Fonte","Tier"]))
+    ["FTSE MIB",v(idx,"FTSE_MIB","idx"),v(idx,"FTSE_MIB_DELTA","delta"),"MilanoFinanza","T2"],
+    ["DAX",v(idx,"DAX","idx"),v(idx,"DAX_DELTA","delta"),"MilanoFinanza","T2"],
+    ["CAC 40",v(idx,"CAC40","idx"),v(idx,"CAC40_DELTA","delta"),"MilanoFinanza","T2"],
+    ["EuroStoxx50",v(idx,"EUROSTOXX50","idx"),v(idx,"EUROSTOXX50_DELTA","delta"),"MilanoFinanza","T2"],
+    ["S&P 500",v(idx,"SP500","idx"),v(idx,"SP500_DELTA","delta"),"CNBC","T2"],
+    ["Nasdaq",v(idx,"NASDAQ","idx"),v(idx,"NASDAQ_DELTA","delta"),"CNBC","T2"],
+    ["Dow Jones",v(idx,"DJI","idx"),v(idx,"DJI_DELTA","delta"),"CNBC","T2"],
+], [5*cm,3*cm,3*cm,4.5*cm,1.5*cm], hdr=["Indice","Chiusura","Delta%","Fonte","Tier"], num_cols=(1,2)))
 story.append(Spacer(1,8))
 
 story += sec("OBBLIGAZIONARIO & SPREAD", "02")
 story.append(tbl([
-    ["BTP 10Y",v(bonds,"BTP_10Y","{:.2f}%"),"N/D","MilanoFinanza","T2"],
-    ["Bund 10Y",v(bonds,"BUND_10Y","{:.2f}%"),"N/D","web_search","T2"],
-    ["Spread BTP-Bund",v(bonds,"SPREAD_BTP_BUND","{:.0f} bp"),"N/D","calcolato","â€”"],
-    ["OAT 10Y",v(bonds,"OAT_10Y","{:.2f}%"),"N/D","WGB","T2"],
-    ["UST 2Y",v(bonds,"UST_2Y","{:.2f}%"),"N/D","web_search","T2"],
-    ["UST 10Y",v(bonds,"UST_10Y","{:.2f}%"),"N/D","web_search","T2"],
-    ["UST 30Y",v(bonds,"UST_30Y","{:.2f}%"),"N/D","web_search","T2"],
-    ["CDS Italia 5Y",v(bonds,"CDS_ITALIA_5Y","{:.0f} bp"),"N/D","WGB","T2"],
-], [4.5*cm,3*cm,2.5*cm,4*cm,2.5*cm], hdr=["Strumento","Rendimento","Delta","Fonte","Tier"]))
+    ["BTP 10Y",v(bonds,"BTP_10Y","yield","%"),"N/D","MilanoFinanza","T2"],
+    ["Bund 10Y",v(bonds,"BUND_10Y","yield","%"),"N/D","web_search","T2"],
+    ["Spread BTP-Bund",v(bonds,"SPREAD_BTP_BUND","bp"," bp"),"N/D","calcolato","—"],
+    ["OAT 10Y",v(bonds,"OAT_10Y","yield","%"),"N/D","WGB","T2"],
+    ["UST 2Y",v(bonds,"UST_2Y","yield","%"),"N/D","web_search","T2"],
+    ["UST 10Y",v(bonds,"UST_10Y","yield","%"),"N/D","web_search","T2"],
+    ["UST 30Y",v(bonds,"UST_30Y","yield","%"),"N/D","web_search","T2"],
+    ["CDS Italia 5Y",v(bonds,"CDS_ITALIA_5Y","bp"," bp"),"N/D","WGB","T2"],
+], [4.5*cm,3*cm,2.5*cm,4*cm,2.5*cm], hdr=["Strumento","Rendimento","Delta","Fonte","Tier"], num_cols=(1,2)))
 story.append(Spacer(1,8))
 
 story += sec("FOREX", "03")
 story.append(tbl([
-    ["EUR/USD",v(forex,"EUR_USD"),"N/D","ECB eurofxref XML","T1"],
-    ["EUR/JPY",v(forex,"EUR_JPY"),"N/D","ECB eurofxref XML","T1"],
-    ["EUR/GBP",v(forex,"EUR_GBP"),"N/D","ECB eurofxref XML","T1"],
-    ["EUR/CHF",v(forex,"EUR_CHF"),"N/D","ECB eurofxref XML","T1"],
-    ["USD/JPY",v(forex,"USD_JPY"),"N/D","ECB (calc)","T1"],
-], [3.5*cm,3*cm,2.5*cm,5.5*cm,2*cm], hdr=["Cross","Tasso","Delta%","Fonte","Tier"]))
+    ["EUR/USD",v(forex,"EUR_USD","fx"),"N/D","ECB eurofxref XML","T1"],
+    ["EUR/JPY",v(forex,"EUR_JPY","fx"),"N/D","ECB eurofxref XML","T1"],
+    ["EUR/GBP",v(forex,"EUR_GBP","fx"),"N/D","ECB eurofxref XML","T1"],
+    ["EUR/CHF",v(forex,"EUR_CHF","fx"),"N/D","ECB eurofxref XML","T1"],
+    ["USD/JPY",v(forex,"USD_JPY","fx"),"N/D","ECB (calc)","T1"],
+], [3.5*cm,3*cm,2.5*cm,5.5*cm,2*cm], hdr=["Cross","Tasso","Delta%","Fonte","Tier"], num_cols=(1,2)))
 story.append(Paragraph(f"Riferimento ECB: {v(forex,'ECB_DATE')}", SS))
 story.append(Spacer(1,8))
 
 story += sec("ENERGIA - DRIVER DOMINANTE", "04")
-brent_d = v(comm,"BRENT_DELTA")
+brent_d = v(comm,"BRENT_DELTA","delta")
 story.append(tbl([
-    ["Brent",v(comm,"BRENT"),brent_d,"CNBC","T2"],
-    ["WTI",v(comm,"WTI"),v(comm,"WTI_DELTA"),"CNBC","T2"],
-    ["Natural Gas",v(comm,"NAT_GAS"),v(comm,"NAT_GAS_DELTA"),"CNBC","T2"],
-    ["Gold",v(comm,"GOLD"),v(comm,"GOLD_DELTA"),"CNBC","T2"],
-    ["Silver",v(comm,"SILVER"),v(comm,"SILVER_DELTA"),"CNBC","T2"],
-], [4*cm,3*cm,3*cm,4*cm,2*cm], hdr=["Commodity","Prezzo","Delta%","Fonte","Tier"]))
+    ["Brent",v(comm,"BRENT","px"),brent_d,"CNBC","T2"],
+    ["WTI",v(comm,"WTI","px"),v(comm,"WTI_DELTA","delta"),"CNBC","T2"],
+    ["Natural Gas",v(comm,"NAT_GAS","px"),v(comm,"NAT_GAS_DELTA","delta"),"CNBC","T2"],
+    ["Gold",v(comm,"GOLD","px"),v(comm,"GOLD_DELTA","delta"),"CNBC","T2"],
+    ["Silver",v(comm,"SILVER","px"),v(comm,"SILVER_DELTA","delta"),"CNBC","T2"],
+], [4*cm,3*cm,3*cm,4*cm,2*cm], hdr=["Commodity","Prezzo","Delta%","Fonte","Tier"], num_cols=(1,2)))
 story.append(Spacer(1,8))
 
 story += sec("MACRO & INFLAZIONE", "05")
 story.append(tbl([
-    ["CPI USA (YoY)",v(macro,"CPI_USA"),"BLS","T1"],
-    ["Core CPI USA",v(macro,"CPI_CORE"),"BLS","T1"],
-    ["PPI USA (YoY)",v(macro,"PPI_USA"),"BLS","T1"],
-    ["HICP Eurozona",v(macro,"HICP_EZ"),"Eurostat","T1"],
-    ["CPI Italia",v(macro,"CPI_ITA"),"ISTAT","T1"],
-    ["PIL USA Q1 2026",v(macro,"PIL_USA_Q1"),"BEA","T1"],
-    ["PIL EZ Q1 2026",v(macro,"PIL_EZ_Q1"),"Eurostat","T1"],
-], [5*cm,4*cm,5*cm,2.5*cm], hdr=["Indicatore","Valore","Fonte","Tier"]))
+    ["CPI USA (YoY)",v(macro,"CPI_USA","pct"),"BLS","T1"],
+    ["Core CPI USA",v(macro,"CPI_CORE","pct"),"BLS","T1"],
+    ["PPI USA (YoY)",v(macro,"PPI_USA","pct"),"BLS","T1"],
+    ["HICP Eurozona",v(macro,"HICP_EZ","pct"),"Eurostat","T1"],
+    ["CPI Italia",v(macro,"CPI_ITA","pct"),"ISTAT","T1"],
+    ["PIL USA Q1 2026",v(macro,"PIL_USA_Q1","pct"),"BEA","T1"],
+    ["PIL EZ Q1 2026",v(macro,"PIL_EZ_Q1","pct"),"Eurostat","T1"],
+], [5*cm,4*cm,5*cm,2.5*cm], hdr=["Indicatore","Valore","Fonte","Tier"], num_cols=(1,)))
 story.append(Spacer(1,8))
 
 story += sec("BANCHE CENTRALI", "06")
 story.append(tbl([
-    ["Fed (Warsh)",v(macro,"FED_RATE"),"Hold","Jun 16-17* Jul 28-29 Sep 15-16*","Fed.gov","T1"],
-    ["BCE",v(macro,"BCE_RATE"),"N/D","5 giu, 23 lug, 11 set","ECB","T1"],
-], [3*cm,2.5*cm,2*cm,5*cm,2.5*cm,1.5*cm], hdr=["Banca","Tasso","Bias","Prossime riunioni","Fonte","Tier"]))
+    ["Fed (Warsh)",v(macro,"FED_RATE","pct"),"Hold","Jun 16-17* Jul 28-29 Sep 15-16*","Fed.gov","T1"],
+    ["BCE",v(macro,"BCE_RATE","pct"),"N/D","5 giu, 23 lug, 11 set","ECB","T1"],
+], [3*cm,2.5*cm,2*cm,5*cm,2.5*cm,1.5*cm], hdr=["Banca","Tasso","Bias","Prossime riunioni","Fonte","Tier"], num_cols=(1,)))
 story.append(Paragraph("* = SEP meeting con Dot Plot", SS))
 story.append(Spacer(1,8))
 
 story += sec("CREDITO & VOLATILITA'", "07")
 story.append(tbl([
-    ["VIX",v(vol,"VIX"),"N/D","CBOE","T1"],
+    ["VIX",v(vol,"VIX","pct"),"N/D","CBOE","T1"],
     ["iTraxx Europe","N/D","N/D","IHS Markit","T1 - abbonamento"],
-    ["CDS Italia 5Y",v(bonds,"CDS_ITALIA_5Y","{:.0f}bp"),"N/D","WGB","T2"],
-], [4*cm,3*cm,3*cm,3.5*cm,4*cm], hdr=["Indicatore","Livello","Delta","Fonte","Nota"]))
+    ["CDS Italia 5Y",v(bonds,"CDS_ITALIA_5Y","bp"," bp"),"N/D","WGB","T2"],
+], [4*cm,3*cm,3*cm,3.5*cm,4*cm], hdr=["Indicatore","Livello","Delta","Fonte","Nota"], num_cols=(1,2)))
 story.append(Paragraph("iTraxx: N/D - abbonamento IHS Markit richiesto.", SS))
 story.append(Spacer(1,8))
 
@@ -167,16 +249,14 @@ for hl in (headlines[:5] if headlines else ["N/D - fetch ANSA fallito"]):
 story.append(Spacer(1,8))
 
 story += sec("STRESS-TEST - SCENARI A/B/C", "09")
-try:
-    bf = float(str(comm.get("BRENT","0")).replace("$","").replace(",","."))
-    ta = f"<${bf*0.87:.1f}"; tc = ">$140"
-except: ta = "N/D"; tc = ">$140"
+bf = num_val(comm.get("BRENT"), "px")
+ta = f"<${_it(bf*0.87, 1)}" if bf else "N/D"; tc = ">$140"
 story.append(tbl([
     ["A - De-escalation Hormuz","40%",ta,"Brent -13% max in 30gg"],
-    ["B - Stallo / status quo","45%","Laterale","Brent range +-5%"],
+    ["B - Stallo / status quo","50%","Laterale","Brent range +-5%"],
     ["C - Escalation (new shock)","10%",tc,"Trigger: attacco Saudi/UAE"],
     ["Black Swan","N/A","N/D","Escluso dalla somma per costruzione"],
-], [5*cm,2*cm,3*cm,6.5*cm], hdr=["Scenario","Prob.","Target Brent","Condizione"]))
+], [5*cm,2*cm,3*cm,6.5*cm], hdr=["Scenario","Prob.","Target Brent","Condizione"], num_cols=(1,)))
 story.append(Paragraph("Stima qualitativa esperta. Non modello quantitativo formale. Somma=100% per costruzione.", SS))
 story.append(Spacer(1,8))
 
@@ -190,6 +270,7 @@ story.append(tbl([
     ["Dec 8-9*","FOMC","USA","Fed SEP + dot plot"],
 ], [3*cm,4*cm,2*cm,7.5*cm], hdr=["Data","Evento","Area","Nota"]))
 
+errors = list(errors) + QUALITY
 if errors:
     story.append(Spacer(1,12))
     story.append(HRFlowable(width="100%",thickness=0.5,color=AMBER))
@@ -202,7 +283,7 @@ _pdf = f"/home/claude/financial_daily_report_{DATE_STR}.pdf"
 _out = f"/mnt/user-data/outputs/financial_daily_report_{DATE_STR}.pdf"
 doc = SimpleDocTemplate(_pdf, pagesize=A4,
     leftMargin=1.5*cm, rightMargin=1.5*cm, topMargin=2.0*cm, bottomMargin=1.8*cm)
-doc.build(story, onFirstPage=hdr_footer, onLaterPages=hdr_footer)
+doc.build(keep_sections(story), onFirstPage=hdr_footer, onLaterPages=hdr_footer)
 print(f"OK PDF: {_pdf}")
 shutil.copy2(_pdf, _out)
 print(f"OK PDF: {_out}")
