@@ -69,6 +69,39 @@ def fetch_ecb_forex():
         data["errors"].append(f"ECB XML parse error: {e}")
         data["quality"]["forex"] = "N/D"
 
+def fetch_ecb_fx_delta():
+    """Variazione % giornaliera dei cross EUR: ultime due date dello storico
+    ECB a 90 giorni (T1). Calcolata solo se l'ultima data coincide con quella
+    del file daily, cosi' delta e livello si riferiscono alla stessa fixing."""
+    url = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
+    content = fetch_url(url, timeout=20)
+    if not content:
+        data["errors"].append("ECB hist-90d: fetch fallito, variazioni FX N/D")
+        return
+    try:
+        root = ET.fromstring(content.encode("utf-8"))
+        ns = {"ecb": "http://www.ecb.int/vocabulary/2002-08-01/eurofxref"}
+        days = sorted(root.findall(".//ecb:Cube/ecb:Cube[@time]", ns),
+                      key=lambda c: c.get("time"), reverse=True)[:2]
+        if len(days) < 2:
+            raise ValueError("meno di due fixing nello storico")
+        last, prev = ({c.get("currency"): float(c.get("rate")) for c in d} for d in days)
+        last_date, prev_date = days[0].get("time"), days[1].get("time")
+        if last_date != data["forex"].get("ECB_DATE"):
+            data["errors"].append(f"ECB hist-90d ({last_date}) non allineato al daily "
+                                  f"({data['forex'].get('ECB_DATE')}): variazioni FX N/D")
+            return
+        def pct(a, b): return round((a / b - 1) * 100, 2)
+        for cur in ("USD", "JPY", "GBP", "CHF"):
+            if cur in last and cur in prev:
+                data["forex"][f"EUR_{cur}_DELTA"] = pct(last[cur], prev[cur])
+        if all(k in d for d in (last, prev) for k in ("USD", "JPY")):
+            data["forex"]["USD_JPY_DELTA"] = pct(last["JPY"] / last["USD"], prev["JPY"] / prev["USD"])
+        data["forex"]["ECB_PREV_DATE"] = prev_date
+        print(f"OK ECB hist-90d - variazioni {prev_date} -> {last_date}")
+    except Exception as e:
+        data["errors"].append(f"ECB hist-90d parse error: {e}")
+
 def fetch_ansa():
     url = "https://www.ansa.it/sito/notizie/economia/economia.shtml"
     content = fetch_url(url)
@@ -99,6 +132,9 @@ if __name__ == "__main__":
     print(f"\n{'='*50}\nFETCH MARKET DATA - {DATE_REPORT}\n{'='*50}\n")
     fetch_ecb_forex()
     time.sleep(1)
+    if data["forex"].get("ECB_DATE"):
+        fetch_ecb_fx_delta()
+        time.sleep(1)
     fetch_ansa()
     set_placeholders()
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
